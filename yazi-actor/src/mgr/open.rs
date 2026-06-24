@@ -20,6 +20,18 @@ impl Actor for Open {
 	const NAME: &str = "open";
 
 	fn act(cx: &mut Ctx, Self::Form { mut opt }: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			let target = if opt.targets.is_empty() {
+				cx.hovered().map(|h| h.url.clone())
+			} else {
+				opt.targets.into_iter().next()
+			};
+			let Some(target) = target else { succ!() };
+			let Some(slug) = yazi_vfs::machines::entry_slug_from_url(&target) else { succ!() };
+			let url = yazi_vfs::machines::target_for_cached(&slug)?;
+			return act!(mgr:cd, cx, (url, yazi_core::mgr::CdSource::Enter));
+		}
+
 		if !opt.interactive && ARGS.chooser_file.is_some() {
 			succ!(if !opt.targets.is_empty() {
 				Quit::with_selected(opt.targets)

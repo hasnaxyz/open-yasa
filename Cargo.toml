@@ -8,8 +8,8 @@ edition      = "2024"
 version      = "26.5.6"
 license      = "MIT"
 authors      = [ "sxyazi <sxyazi@gmail.com>" ]
-homepage     = "https://yazi-rs.github.io"
-repository   = "https://github.com/sxyazi/yazi"
+homepage     = "https://github.com/hasnaxyz/open-yasa"
+repository   = "https://github.com/hasnaxyz/open-yasa"
 rust-version = "1.95.0"
 
 [profile.dev]

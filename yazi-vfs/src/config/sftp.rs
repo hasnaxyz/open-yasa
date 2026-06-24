@@ -5,19 +5,38 @@ use yazi_fs::path::sanitize_path;
 
 #[derive(Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ServiceSftp {
-	pub host:           String,
-	pub user:           String,
-	pub port:           u16,
-	pub password:       Option<String>,
+	pub host:                 String,
+	pub user:                 String,
+	pub port:                 u16,
+	pub password:             Option<String>,
 	#[serde(default, deserialize_with = "deserialize_path")]
-	pub key_file:       PathBuf,
-	pub key_passphrase: Option<String>,
+	pub key_file:             PathBuf,
+	pub key_passphrase:       Option<String>,
 	#[serde(default, deserialize_with = "deserialize_path")]
-	pub cert_file:      PathBuf,
+	pub cert_file:            PathBuf,
 	#[serde(default)]
-	pub no_cert_verify: bool,
+	pub no_cert_verify:       bool,
 	#[serde(default = "default_identity_agent", deserialize_with = "deserialize_identity_agent")]
-	pub identity_agent: PathBuf,
+	pub identity_agent:       PathBuf,
+	#[serde(default = "default_connect_timeout_secs")]
+	pub connect_timeout_secs: u64,
+}
+
+impl ServiceSftp {
+	pub fn open_machines(host: String, user: String, port: u16, connect_timeout_secs: u64) -> Self {
+		Self {
+			host,
+			user,
+			port,
+			password: None,
+			key_file: PathBuf::new(),
+			key_passphrase: None,
+			cert_file: PathBuf::new(),
+			no_cert_verify: false,
+			identity_agent: default_identity_agent(),
+			connect_timeout_secs,
+		}
+	}
 }
 
 fn deserialize_path<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
@@ -36,6 +55,8 @@ where
 fn default_identity_agent() -> PathBuf {
 	env::var_os("SSH_AUTH_SOCK").map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_default()
 }
+
+fn default_connect_timeout_secs() -> u64 { 45 }
 
 fn deserialize_identity_agent<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
 where

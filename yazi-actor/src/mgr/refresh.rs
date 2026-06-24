@@ -44,6 +44,14 @@ impl Refresh {
 	// TODO: performance improvement
 	fn trigger_dirs(folders: &[&Folder]) {
 		async fn go(dir: UrlBuf, cha: Cha) {
+			if yazi_vfs::machines::is_root_url(&dir) {
+				match yazi_vfs::machines::root_files().await {
+					Ok(files) => FilesOp::Full(dir, files, yazi_vfs::machines::root_cha()).emit(),
+					Err(e) => FilesOp::issue_error(&dir, e).await,
+				}
+				return;
+			}
+
 			let Some(cha) = Files::assert_stale(&dir, cha).await else { return };
 
 			match Files::from_dir_bulk(&dir).await {

@@ -1,4 +1,4 @@
-yazi_macro::mod_pub!(keymap mgr open opener plugin popup preview tasks theme which);
+yazi_macro::mod_pub!(keymap mgr open open_yasa opener plugin popup preview tasks theme which);
 
 yazi_macro::mod_flat!(icon inject layout mixing pattern platform preset priority selectable selector yazi);
 

@@ -46,7 +46,9 @@ impl Actor for Cd {
 		tab.history.insert(rep.url.clone(), rep);
 
 		// Parent
-		if let Some(parent) = form.target.parent() {
+		if !yazi_vfs::machines::is_root_url(&form.target)
+			&& let Some(parent) = form.target.parent()
+		{
 			tab.parent = Some(tab.history.remove_or(parent));
 		}
 

@@ -13,6 +13,10 @@ impl Actor for Paste {
 	const NAME: &str = "paste";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		let mgr = &mut cx.core.mgr;
 		let tab = &mgr.tabs[cx.tab];
 

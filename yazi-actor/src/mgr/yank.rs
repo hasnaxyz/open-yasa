@@ -1,6 +1,6 @@
 use anyhow::Result;
 use yazi_core::mgr::Yanked;
-use yazi_macro::{act, render};
+use yazi_macro::{act, render, succ};
 use yazi_parser::mgr::YankForm;
 use yazi_shared::{data::Data, url::UrlBufCov};
 
@@ -14,6 +14,10 @@ impl Actor for Yank {
 	const NAME: &str = "yank";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		act!(mgr:escape_visual, cx)?;
 
 		cx.mgr.yanked =

@@ -14,6 +14,10 @@ impl Actor for Copy {
 	const NAME: &str = "copy";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		act!(mgr:escape_visual, cx)?;
 
 		let mut s = Vec::<u8>::new();

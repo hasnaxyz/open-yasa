@@ -1,10 +1,11 @@
-name: yazi
+name: open-yasa
 base: core24
-adopt-info: yazi
-summary: Blazing fast terminal file manager written in Rust, based on async I/O.
+adopt-info: open-yasa
+summary: Open Yasa file manager with an Open Machines-aware entry layer.
 description: |
-  Yazi is a terminal file manager written in Rust, based on non-blocking async I/O.
-  It aims to provide an efficient, user-friendly, and customizable file management experience.
+  Open Yasa is Hasna's public fork of Yazi. It keeps Yazi's async terminal file
+  manager core and adds an Open Machines-aware entry layer for browsing across
+  local and remote machines.
 license: MIT
 grade: stable
 confinement: classic
@@ -14,19 +15,19 @@ platforms:
   arm64:
 
 apps:
-  yazi:
+  open-yasa:
     command: yazi
     environment:
       PATH: $SNAP/bin:$SNAP/usr/bin:$PATH
-  ya:
+  open-yasa-ya:
     command: ya
     environment:
       PATH: $SNAP/bin:$SNAP/usr/bin:$PATH
 
 parts:
-  yazi:
+  open-yasa:
     plugin: rust
-    source: https://github.com/sxyazi/yazi.git
+    source: .
     stage-snaps:
       - jq
     stage-packages:
@@ -147,7 +148,7 @@ parts:
       - usr/lib/libMagickWand-7.Q16HDRI.so*
 
   cleanup:
-    after: [yazi, magick]
+    after: [open-yasa, magick]
     plugin: nil
     build-packages:
       - patchelf

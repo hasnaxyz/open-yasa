@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export ARTIFACT_NAME="yazi-$1"
+export ARTIFACT_NAME="open-yasa-$1"
 export YAZI_GEN_COMPLETIONS=1
 
 # Build the target
@@ -12,6 +12,8 @@ cargo build --release --locked --target "$1"
 mkdir -p "target/release"
 cp "target/$1/release/ya" "target/release/ya"
 cp "target/$1/release/yazi" "target/release/yazi"
+cp "target/$1/release/ya" "target/release/open-yasa-ya"
+cp "target/$1/release/yazi" "target/release/open-yasa"
 
 # Package deb
 if [[ "$ARTIFACT_NAME" == *-linux-* ]] && { [[ "$ARTIFACT_NAME" == *-aarch64-* ]] || [[ "$ARTIFACT_NAME" == *-x86_64-* ]]; }; then
@@ -21,6 +23,8 @@ fi
 
 # Create the artifact
 mkdir -p "$ARTIFACT_NAME/completions"
+cp "target/release/open-yasa-ya" "$ARTIFACT_NAME"
+cp "target/release/open-yasa" "$ARTIFACT_NAME"
 cp "target/release/ya" "$ARTIFACT_NAME"
 cp "target/release/yazi" "$ARTIFACT_NAME"
 cp yazi-cli/completions/* "$ARTIFACT_NAME/completions"

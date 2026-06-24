@@ -14,6 +14,10 @@ impl Actor for Leave {
 	const NAME: &str = "leave";
 
 	fn act(cx: &mut Ctx, _: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		let url = cx
 			.hovered()
 			.and_then(|h| h.url.parent())
