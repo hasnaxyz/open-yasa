@@ -20,6 +20,10 @@ impl Actor for Rename {
 	const NAME: &str = "rename";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		act!(mgr:escape_visual, cx)?;
 
 		if !form.hovered && !cx.tab().selected.is_empty() {

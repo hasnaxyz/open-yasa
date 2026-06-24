@@ -19,6 +19,10 @@ impl Actor for Create {
 	const NAME: &str = "create";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		let cwd = cx.cwd().to_owned();
 		let mut input = input!(cx, YAZI.input.create(form.dir))?;
 

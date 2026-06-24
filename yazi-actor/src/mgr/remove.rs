@@ -15,6 +15,10 @@ impl Actor for Remove {
 	const NAME: &str = "remove";
 
 	fn act(cx: &mut Ctx, mut form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		act!(mgr:escape_visual, cx)?;
 
 		form.targets = if form.hovered {

@@ -1,4 +1,4 @@
-yazi_macro::mod_pub!(config provider);
+yazi_macro::mod_pub!(config machines provider);
 
 yazi_macro::mod_flat!(cha file files fns op);
 

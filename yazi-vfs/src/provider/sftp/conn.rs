@@ -23,9 +23,25 @@ impl russh::client::Handler for Conn {
 
 	async fn check_server_key(
 		&mut self,
-		_server_public_key: &russh::keys::PublicKey,
+		server_public_key: &russh::keys::PublicKey,
 	) -> Result<bool, Self::Error> {
-		Ok(true)
+		if self.config.no_cert_verify {
+			return Ok(true);
+		}
+
+		match russh::keys::check_known_hosts(&self.config.host, self.config.port, server_public_key) {
+			Ok(true) => Ok(true),
+			Ok(false) => Err(cfg_err!(
+				"Host key for {}:{} was not found in ~/.ssh/known_hosts",
+				self.config.host,
+				self.config.port
+			)),
+			Err(e) => Err(cfg_err!(
+				"Host key verification failed for {}:{}: {e}",
+				self.config.host,
+				self.config.port
+			)),
+		}
 	}
 }
 
@@ -65,7 +81,7 @@ impl Conn {
 				deadpool::managed::Pool::builder(self)
 					.runtime(deadpool::Runtime::Tokio1)
 					.max_size(8)
-					.create_timeout(Some(Duration::from_secs(45)))
+					.create_timeout(Some(Duration::from_secs(self.config.connect_timeout_secs.max(1))))
 					.build()
 					.unwrap(),
 			))

@@ -36,6 +36,12 @@ impl Vfs {
 		P: TryFrom<&'a Service, Error = &'static str>,
 	{
 		let Some((key, value)) = Self::load().await?.services.get_key_value(name) else {
+			if let Some((key, value)) = crate::machines::sftp_service(name).await? {
+				return match value.try_into() {
+					Ok(p) => Ok((key, p)),
+					Err(e) => Err(io::Error::other(format!("VFS service `{key}` has wrong type: {e}"))),
+				};
+			}
 			return Err(io::Error::other(format!("No such VFS service: {name}")));
 		};
 		match value.try_into() {

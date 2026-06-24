@@ -24,6 +24,10 @@ impl Actor for BulkCreate {
 	const NAME: &str = "bulk_create";
 
 	fn act(cx: &mut Ctx, _: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!();
+		}
+
 		let Some(opener) = Self::opener() else {
 			succ!(NotifyProxy::push_warn("Bulk create", "No text opener found"));
 		};

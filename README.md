@@ -6,6 +6,85 @@
 
 </div>
 
+## Open Yasa - Yazi With A Machine Layer
+
+Open Yasa is Hasna's public fork of [Yazi](https://github.com/sxyazi/yazi). It keeps
+Yazi's async terminal file manager core and adds an Open Machines-aware entry layer
+for browsing across local and remote machines.
+
+This fork intentionally stays close to upstream Yazi. Upstream is MIT-licensed;
+the original license text is preserved in [LICENSE](LICENSE), and upstream
+authorship remains credited in this repository's history and package metadata.
+
+## Open Machines Integration
+
+When Open Yasa starts without an explicit path, it opens a top-level machine
+chooser before normal file browsing. Each entry shows the Open Machines slug,
+friendly/display name when available, route kind, status, and platform.
+
+- Local machine entries enter the current working directory through the real
+  local filesystem, so local browsing remains the normal Yazi fast path.
+- Remote machine entries enter `sftp://<machine-id>/...`; the SFTP service is
+  resolved dynamically through the `machines route` command from
+  [`@hasna/machines`](https://www.npmjs.com/package/@hasna/machines) when it is
+  installed and configured.
+- Remote file operations use Yazi's existing SFTP provider. Listing, reading,
+  writing, copy, move, rename, delete, and symlink behavior are available only
+  when the resolved SSH/SFTP route authenticates successfully.
+- Remote SFTP host keys are checked against the user's `~/.ssh/known_hosts` by
+  default. Add or verify host keys through your normal SSH/Open Machines trust
+  flow before browsing a new remote machine; `no_cert_verify = true` remains an
+  explicit opt-out for trusted private environments.
+- If Open Machines is unavailable, Open Yasa falls back to a local machine entry
+  and still works as a local terminal file manager.
+- Unreachable or unauthenticated machines surface through Yazi's existing folder
+  error state. Open Machines-generated SFTP services use a shorter connection
+  timeout than static `vfs.toml` services.
+- Adding and connecting machines is handled by the Open Machines CLI, for
+  example `machines manifest add`, `machines setup --apply`, and
+  `machines sync --apply`. The Open Yasa chooser re-reads topology on refresh,
+  so newly connected machines appear without fork-specific private state.
+
+Configuration default:
+
+```toml
+[open_yasa]
+machines_layer = true
+```
+
+Run `yazi /some/path` to bypass the machine chooser and start directly in a local
+or supported VFS path.
+
+## Build And Install
+
+```bash
+cargo build --release --locked --bin yazi --bin ya
+install -Dm755 target/release/yazi ~/.local/bin/open-yasa
+install -Dm755 target/release/ya ~/.local/bin/open-yasa-ya
+ln -sf ~/.local/bin/open-yasa ~/.local/bin/yasa
+ln -sf ~/.local/bin/open-yasa-ya ~/.local/bin/yasa-ya
+```
+
+The upstream-compatible `yazi` and `ya` binaries are still built. Hasna installs
+the fork under `open-yasa`/`open-yasa-ya` plus the short `yasa`/`yasa-ya`
+aliases to avoid replacing upstream Yazi unless that is intentional.
+
+GitHub release automation builds `open-yasa-*` draft/nightly artifacts. Store
+publishing to Winget or Snap is disabled until Open Yasa has dedicated package
+identities and release credentials.
+
+## Upstream Sync
+
+This repository tracks upstream Yazi through the read-only `upstream` remote:
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
+Keep fork-specific Open Yasa work in feature branches and PRs against
+`hasnaxyz/open-yasa`; do not push to `upstream`.
+
 ## Yazi - ⚡️ Blazing Fast Terminal File Manager
 
 Yazi (means "duck") is a terminal file manager written in Rust, based on non-blocking async I/O. It aims to provide an efficient, user-friendly, and customizable file management experience.
