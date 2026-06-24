@@ -3,7 +3,7 @@ use std::{collections::HashMap, io, path::PathBuf, process::Stdio, sync::OnceLoc
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::{process::Command, time::timeout};
-use yazi_fs::{cha::{Cha, ChaKind, ChaMode, ChaType}, file::File};
+use yazi_fs::{cha::{Cha, ChaKind, ChaMode, ChaType}, file::File, path::sanitize_path};
 use yazi_shared::url::{UrlBuf, UrlLike};
 
 use crate::config::{Service, ServiceSftp};
@@ -11,6 +11,7 @@ use crate::config::{Service, ServiceSftp};
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
 const COMMAND_RETRY_TIMEOUT: Duration = Duration::from_secs(20);
 const ROUTE_TIMEOUT: Duration = Duration::from_secs(6);
+const SSH_CONFIG_TIMEOUT: Duration = Duration::from_secs(3);
 const SFTP_CONNECT_TIMEOUT_SECS: u64 = 8;
 
 #[cfg(windows)]
@@ -75,6 +76,26 @@ struct Route {
 	local:          bool,
 	#[serde(default)]
 	warnings:       Option<Vec<String>>,
+}
+
+#[derive(Debug, Default)]
+struct SshConfig {
+	host:           Option<String>,
+	user:           Option<String>,
+	port:           Option<u16>,
+	key_files:      Vec<PathBuf>,
+	cert_files:     Vec<PathBuf>,
+	identity_agent: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+struct SftpConfig {
+	host:           String,
+	user:           String,
+	port:           u16,
+	key_file:       PathBuf,
+	cert_file:      PathBuf,
+	identity_agent: PathBuf,
 }
 
 fn machine_cache() -> &'static Mutex<HashMap<String, Machine>> {
@@ -335,17 +356,137 @@ pub async fn sftp_service(name: &str) -> io::Result<Option<(&'static str, &'stat
 		.or(route.target)
 		.ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("No SSH target for {name}")))?;
 	let (user, host, port) = parse_ssh_target(&target)?;
+	let resolved = resolve_ssh_config(user, host, port).await;
 
 	let leaked_name: &'static str = Box::leak(name.to_owned().into_boxed_str());
-	let service = Box::leak(Box::new(Service::Sftp(ServiceSftp::open_machines(
-		host,
-		user,
-		port,
+	let mut sftp = ServiceSftp::open_machines(
+		resolved.host,
+		resolved.user,
+		resolved.port,
 		SFTP_CONNECT_TIMEOUT_SECS,
-	))));
+	);
+	if !resolved.key_file.as_os_str().is_empty() {
+		sftp.key_file = resolved.key_file;
+	}
+	if !resolved.cert_file.as_os_str().is_empty() {
+		sftp.cert_file = resolved.cert_file;
+	}
+	if !resolved.identity_agent.as_os_str().is_empty() {
+		sftp.identity_agent = resolved.identity_agent;
+	}
+
+	let service = Box::leak(Box::new(Service::Sftp(sftp)));
 	let resolved = (leaked_name, service as &'static Service);
 	service_cache().lock().insert(name.to_owned(), resolved);
 	Ok(Some(resolved))
+}
+
+async fn resolve_ssh_config(user: String, host: String, port: u16) -> SftpConfig {
+	let mut child = Command::new("ssh");
+	let port_arg = port.to_string();
+	child
+		.args(["-G", "-l", &user, "-p", &port_arg, &host])
+		.stdin(Stdio::null())
+		.stdout(Stdio::piped())
+		.stderr(Stdio::piped());
+
+	let output = match timeout(SSH_CONFIG_TIMEOUT, child.output()).await {
+		Ok(Ok(output)) => output,
+		Ok(Err(e)) => {
+			tracing::debug!("Failed to run `ssh -G {host}` for Open Machines route: {e}");
+			return SftpConfig::new(host, user, port);
+		}
+		Err(_) => {
+			tracing::debug!("Timed out running `ssh -G {host}` for Open Machines route");
+			return SftpConfig::new(host, user, port);
+		}
+	};
+
+	if !output.status.success() {
+		let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+		tracing::debug!("`ssh -G {host}` failed for Open Machines route: {stderr}");
+		return SftpConfig::new(host, user, port);
+	}
+
+	let raw = match String::from_utf8(output.stdout) {
+		Ok(raw) => raw,
+		Err(e) => {
+			tracing::debug!("`ssh -G {host}` produced non-UTF-8 output: {e}");
+			return SftpConfig::new(host, user, port);
+		}
+	};
+
+	let parsed = parse_ssh_config_output(&raw);
+	let mut config = SftpConfig::new(host, user, port);
+	if let Some(host) = parsed.host.and_then(non_empty) {
+		config.host = host;
+	}
+	if let Some(user) = parsed.user.and_then(non_empty) {
+		config.user = user;
+	}
+	if let Some(port) = parsed.port {
+		config.port = port;
+	}
+	if let Some(key_file) = parsed.key_files.into_iter().find(|path| path.is_file()) {
+		config.key_file = key_file;
+	}
+	if let Some(cert_file) = parsed.cert_files.into_iter().find(|path| path.is_file()) {
+		config.cert_file = cert_file;
+	}
+	if let Some(identity_agent) = parsed.identity_agent.filter(|path| path.exists()) {
+		config.identity_agent = identity_agent;
+	}
+
+	config
+}
+
+impl SftpConfig {
+	fn new(host: String, user: String, port: u16) -> Self {
+		Self {
+			host,
+			user,
+			port,
+			key_file: PathBuf::new(),
+			cert_file: PathBuf::new(),
+			identity_agent: PathBuf::new(),
+		}
+	}
+}
+
+fn parse_ssh_config_output(raw: &str) -> SshConfig {
+	let mut config = SshConfig::default();
+	for line in raw.lines() {
+		let Some((key, value)) = line.split_once(char::is_whitespace) else { continue };
+		let value = value.trim();
+		match key.to_ascii_lowercase().as_str() {
+			"hostname" => config.host = non_empty(value.to_owned()),
+			"user" => config.user = non_empty(value.to_owned()),
+			"port" => config.port = value.parse().ok(),
+			"identityfile" => {
+				if let Some(path) = ssh_config_path(value) {
+					config.key_files.push(path);
+				}
+			}
+			"certificatefile" => {
+				if let Some(path) = ssh_config_path(value) {
+					config.cert_files.push(path);
+				}
+			}
+			"identityagent" => config.identity_agent = ssh_config_path(value),
+			_ => {}
+		}
+	}
+
+	config
+}
+
+fn ssh_config_path(value: &str) -> Option<PathBuf> {
+	let value = value.trim();
+	if value.is_empty() || value.eq_ignore_ascii_case("none") {
+		return None;
+	}
+
+	sanitize_path(PathBuf::from(value)).filter(|path| path.is_absolute())
 }
 
 fn parse_ssh_target(target: &str) -> io::Result<(String, String, u16)> {
@@ -385,6 +526,28 @@ mod tests {
 			parse_ssh_target("hasna@spark01:2222").unwrap(),
 			("hasna".to_owned(), "spark01".to_owned(), 2222)
 		);
+	}
+
+	#[test]
+	fn parse_ssh_config_output_reads_connection_details() {
+		let config = parse_ssh_config_output(
+			r#"
+user hasna
+hostname apple03.tail.example.ts.net
+port 2222
+identityfile ~/.ssh/id_ed25519_spark02_fleet
+identityagent none
+certificatefile none
+"#,
+		);
+
+		assert_eq!(config.user.as_deref(), Some("hasna"));
+		assert_eq!(config.host.as_deref(), Some("apple03.tail.example.ts.net"));
+		assert_eq!(config.port, Some(2222));
+		assert_eq!(config.key_files.len(), 1);
+		assert!(config.key_files[0].is_absolute());
+		assert!(config.identity_agent.is_none());
+		assert!(config.cert_files.is_empty());
 	}
 
 	#[test]
