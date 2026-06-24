@@ -3,12 +3,13 @@ use std::{collections::HashMap, io, path::PathBuf, process::Stdio, sync::OnceLoc
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::{process::Command, time::timeout};
-use yazi_fs::{cha::{Cha, ChaType}, file::File};
+use yazi_fs::{cha::{Cha, ChaKind, ChaMode, ChaType}, file::File};
 use yazi_shared::url::{UrlBuf, UrlLike};
 
 use crate::config::{Service, ServiceSftp};
 
-const COMMAND_TIMEOUT: Duration = Duration::from_secs(4);
+const COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
+const COMMAND_RETRY_TIMEOUT: Duration = Duration::from_secs(20);
 const ROUTE_TIMEOUT: Duration = Duration::from_secs(6);
 const SFTP_CONNECT_TIMEOUT_SECS: u64 = 8;
 
@@ -113,8 +114,15 @@ async fn run_machines(args: &[&str], duration: Duration) -> io::Result<String> {
 
 async fn discover() -> io::Result<Vec<Machine>> {
 	let raw = run_machines(&["topology", "--all", "--json"], COMMAND_TIMEOUT).await?;
-	let topology: Topology =
-		serde_json::from_str(&raw).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+	let topology = match parse_topology(&raw) {
+		Ok(topology) => topology,
+		Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+			tracing::debug!("Open Machines topology output was incomplete; retrying discovery");
+			let raw = run_machines(&["topology", "--all", "--json"], COMMAND_RETRY_TIMEOUT).await?;
+			parse_topology(&raw)?
+		}
+		Err(e) => return Err(e),
+	};
 	let local_cwd = std::env::current_dir().ok().map(|p| p.to_string_lossy().into_owned());
 
 	Ok(
@@ -143,6 +151,15 @@ async fn discover() -> io::Result<Vec<Machine>> {
 			})
 			.collect(),
 	)
+}
+
+fn parse_topology(raw: &str) -> io::Result<Topology> {
+	serde_json::from_str(raw).map_err(|e| {
+		io::Error::new(
+			if e.is_eof() { io::ErrorKind::UnexpectedEof } else { io::ErrorKind::InvalidData },
+			format!("failed to parse Open Machines topology JSON ({} bytes): {e}", raw.len()),
+		)
+	})
 }
 
 fn non_empty(s: String) -> Option<String> {
@@ -183,6 +200,8 @@ pub fn entry_slug_from_url(url: &UrlBuf) -> Option<String> {
 	name.split_ascii_whitespace().next().map(ToOwned::to_owned).filter(|s| !s.is_empty())
 }
 
+pub fn is_entry_url(url: &UrlBuf) -> bool { entry_slug_from_url(url).is_some() }
+
 pub fn target_for_cached(slug: &str) -> io::Result<UrlBuf> {
 	let machine = machine_cache()
 		.lock()
@@ -210,9 +229,28 @@ pub async fn root_files() -> io::Result<Vec<File>> {
 		.into_iter()
 		.map(|machine| {
 			let url = root.try_join(entry_name(&machine)).map_err(io::Error::other)?;
-			Ok(File::from_dummy(url, Some(ChaType::Dir)))
+			Ok(machine_entry_file(url))
 		})
 		.collect()
+}
+
+fn machine_entry_file(url: UrlBuf) -> File {
+	File {
+		url,
+		cha: Cha {
+			kind: ChaKind::empty(),
+			mode: ChaMode::T_DIR
+				| ChaMode::U_READ
+				| ChaMode::U_WRITE
+				| ChaMode::U_EXEC
+				| ChaMode::G_READ
+				| ChaMode::G_EXEC
+				| ChaMode::O_READ
+				| ChaMode::O_EXEC,
+			..Default::default()
+		},
+		link_to: None,
+	}
 }
 
 fn entry_name(machine: &Machine) -> String {
@@ -354,6 +392,23 @@ mod tests {
 		let root = root_url();
 		let url = root.try_join("spark02 [local online linux]").unwrap();
 		assert_eq!(entry_slug_from_url(&url).as_deref(), Some("spark02"));
+		assert!(is_entry_url(&url));
+	}
+
+	#[test]
+	fn topology_parse_reports_truncated_json_as_eof() {
+		match parse_topology(r#"{"local_machine_id":"spark02","machines":[{"#) {
+			Ok(_) => panic!("truncated topology JSON parsed successfully"),
+			Err(err) => assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof),
+		}
+	}
+
+	#[test]
+	fn machine_entries_render_as_real_directories() {
+		let file = machine_entry_file(root_url().try_join("spark02 [local online linux]").unwrap());
+		assert_eq!(*file.mode, ChaType::Dir);
+		assert!(!file.is_dummy());
+		assert!(!file.is_hidden());
 	}
 
 	#[test]
