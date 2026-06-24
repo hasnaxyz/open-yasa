@@ -13,6 +13,10 @@ impl Actor for Peek {
 	const NAME: &str = "peek";
 
 	fn act(cx: &mut Ctx, form: Self::Form) -> Result<Data> {
+		if yazi_vfs::machines::is_root_url(cx.cwd()) {
+			succ!(cx.tab_mut().preview.reset());
+		}
+
 		let Some(hovered) = cx.hovered().cloned() else {
 			succ!(cx.tab_mut().preview.reset());
 		};

@@ -19,7 +19,9 @@ impl Actor for Watch {
 			.chain(cx.core.mgr.tabs.parent().map(|p| &p.url))
 			.chain(cx.core.mgr.tabs.hovered().filter(|h| h.is_dir()).map(|h| &h.url));
 
-		cx.core.mgr.watcher.watch(it.filter(|url| !yazi_vfs::machines::is_root_url(url)));
+		cx.core.mgr.watcher.watch(it.filter(|url| {
+			!yazi_vfs::machines::is_root_url(url) && !yazi_vfs::machines::is_entry_url(url)
+		}));
 		succ!();
 	}
 }
