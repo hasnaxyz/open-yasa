@@ -3,7 +3,7 @@ use std::{collections::HashMap, io, path::PathBuf, process::Stdio, sync::OnceLoc
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::{process::Command, time::timeout};
-use yazi_fs::{cha::{Cha, ChaType}, file::File};
+use yazi_fs::{cha::{Cha, ChaKind, ChaMode, ChaType}, file::File};
 use yazi_shared::url::{UrlBuf, UrlLike};
 
 use crate::config::{Service, ServiceSftp};
@@ -229,9 +229,28 @@ pub async fn root_files() -> io::Result<Vec<File>> {
 		.into_iter()
 		.map(|machine| {
 			let url = root.try_join(entry_name(&machine)).map_err(io::Error::other)?;
-			Ok(File::from_dummy(url, Some(ChaType::Dir)))
+			Ok(machine_entry_file(url))
 		})
 		.collect()
+}
+
+fn machine_entry_file(url: UrlBuf) -> File {
+	File {
+		url,
+		cha: Cha {
+			kind: ChaKind::empty(),
+			mode: ChaMode::T_DIR
+				| ChaMode::U_READ
+				| ChaMode::U_WRITE
+				| ChaMode::U_EXEC
+				| ChaMode::G_READ
+				| ChaMode::G_EXEC
+				| ChaMode::O_READ
+				| ChaMode::O_EXEC,
+			..Default::default()
+		},
+		link_to: None,
+	}
 }
 
 fn entry_name(machine: &Machine) -> String {
@@ -382,6 +401,14 @@ mod tests {
 			Ok(_) => panic!("truncated topology JSON parsed successfully"),
 			Err(err) => assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof),
 		}
+	}
+
+	#[test]
+	fn machine_entries_render_as_real_directories() {
+		let file = machine_entry_file(root_url().try_join("spark02 [local online linux]").unwrap());
+		assert_eq!(*file.mode, ChaType::Dir);
+		assert!(!file.is_dummy());
+		assert!(!file.is_hidden());
 	}
 
 	#[test]
