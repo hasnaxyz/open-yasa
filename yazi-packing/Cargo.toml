@@ -23,7 +23,11 @@ priority                  = "optional"
 assets                    = [
 	[ "target/release/open-yasa-ya", "usr/bin/", "755" ],
 	[ "target/release/open-yasa", "usr/bin/", "755" ],
+	[ "target/release/yasa-ya", "usr/bin/", "755" ],
+	[ "target/release/yasa", "usr/bin/", "755" ],
 	[ "../README.md",  "usr/share/doc/open-yasa/README", "644" ],
 	[ "../yazi-cli/completions/ya.bash", "usr/share/bash-completion/completions/open-yasa-ya", "644" ],
 	[ "../yazi-boot/completions/yazi.bash", "usr/share/bash-completion/completions/open-yasa", "644" ],
+	[ "../yazi-cli/completions/ya.bash", "usr/share/bash-completion/completions/yasa-ya", "644" ],
+	[ "../yazi-boot/completions/yazi.bash", "usr/share/bash-completion/completions/yasa", "644" ],
 ]

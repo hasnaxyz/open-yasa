@@ -100,6 +100,8 @@ jobs:
           New-Item -ItemType Directory -Path ${env:TARGET_NAME}
           Copy-Item -Path "target\${{ matrix.target }}\release-windows\ya.exe" -Destination "${env:TARGET_NAME}\open-yasa-ya.exe"
           Copy-Item -Path "target\${{ matrix.target }}\release-windows\yazi.exe" -Destination "${env:TARGET_NAME}\open-yasa.exe"
+          Copy-Item -Path "target\${{ matrix.target }}\release-windows\ya.exe" -Destination "${env:TARGET_NAME}\yasa-ya.exe"
+          Copy-Item -Path "target\${{ matrix.target }}\release-windows\yazi.exe" -Destination "${env:TARGET_NAME}\yasa.exe"
           Copy-Item -Path "target\${{ matrix.target }}\release-windows\ya.exe" -Destination ${env:TARGET_NAME}
           Copy-Item -Path "target\${{ matrix.target }}\release-windows\yazi.exe" -Destination ${env:TARGET_NAME}
           Copy-Item -Path "yazi-boot\completions" -Destination ${env:TARGET_NAME} -Recurse

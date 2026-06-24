@@ -14,6 +14,8 @@ cp "target/$1/release/ya" "target/release/ya"
 cp "target/$1/release/yazi" "target/release/yazi"
 cp "target/$1/release/ya" "target/release/open-yasa-ya"
 cp "target/$1/release/yazi" "target/release/open-yasa"
+cp "target/$1/release/ya" "target/release/yasa-ya"
+cp "target/$1/release/yazi" "target/release/yasa"
 
 # Package deb
 if [[ "$ARTIFACT_NAME" == *-linux-* ]] && { [[ "$ARTIFACT_NAME" == *-aarch64-* ]] || [[ "$ARTIFACT_NAME" == *-x86_64-* ]]; }; then
@@ -25,6 +27,8 @@ fi
 mkdir -p "$ARTIFACT_NAME/completions"
 cp "target/release/open-yasa-ya" "$ARTIFACT_NAME"
 cp "target/release/open-yasa" "$ARTIFACT_NAME"
+cp "target/release/yasa-ya" "$ARTIFACT_NAME"
+cp "target/release/yasa" "$ARTIFACT_NAME"
 cp "target/release/ya" "$ARTIFACT_NAME"
 cp "target/release/yazi" "$ARTIFACT_NAME"
 cp yazi-cli/completions/* "$ARTIFACT_NAME/completions"

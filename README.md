@@ -61,11 +61,13 @@ or supported VFS path.
 cargo build --release --locked --bin yazi --bin ya
 install -Dm755 target/release/yazi ~/.local/bin/open-yasa
 install -Dm755 target/release/ya ~/.local/bin/open-yasa-ya
+ln -sf ~/.local/bin/open-yasa ~/.local/bin/yasa
+ln -sf ~/.local/bin/open-yasa-ya ~/.local/bin/yasa-ya
 ```
 
 The upstream-compatible `yazi` and `ya` binaries are still built. Hasna installs
-the fork under `open-yasa`/`open-yasa-ya` aliases to avoid replacing upstream
-Yazi unless that is intentional.
+the fork under `open-yasa`/`open-yasa-ya` plus the short `yasa`/`yasa-ya`
+aliases to avoid replacing upstream Yazi unless that is intentional.
 
 GitHub release automation builds `open-yasa-*` draft/nightly artifacts. Store
 publishing to Winget or Snap is disabled until Open Yasa has dedicated package
