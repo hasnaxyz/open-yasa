@@ -12,9 +12,10 @@ Open Yasa is Hasna's public fork of [Yazi](https://github.com/sxyazi/yazi). It k
 Yazi's async terminal file manager core and adds an Open Machines-aware entry layer
 for browsing across local and remote machines.
 
-This fork intentionally stays close to upstream Yazi. Upstream is MIT-licensed;
-the original license text is preserved in [LICENSE](LICENSE), and upstream
-authorship remains credited in this repository's history and package metadata.
+This fork intentionally stays close to upstream Yazi. The Hasna Open Yasa
+distribution is licensed under Apache-2.0; the upstream Yazi MIT license text is
+preserved in [LICENSE-MIT](LICENSE-MIT), and upstream authorship remains credited
+in this repository's history and package metadata.
 
 ## Open Machines Integration
 
@@ -83,7 +84,7 @@ git merge upstream/main
 ```
 
 Keep fork-specific Open Yasa work in feature branches and PRs against
-`hasnaxyz/open-yasa`; do not push to `upstream`.
+`hasna/yasa`; do not push to `upstream`.
 
 ## Yazi - ⚡️ Blazing Fast Terminal File Manager
 
@@ -170,4 +171,5 @@ Active code contributors can contact @sxyazi to get a license (if any are still 
 
 ## License
 
-Yazi is MIT-licensed. For more information check the [LICENSE](LICENSE) file.
+Yazi is MIT-licensed. For the upstream license text, see
+[LICENSE-MIT](LICENSE-MIT).

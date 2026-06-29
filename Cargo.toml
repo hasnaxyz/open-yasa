@@ -6,10 +6,10 @@ default-members = [ "yazi-fm", "yazi-cli" ]
 [workspace.package]
 edition      = "2024"
 version      = "26.5.6"
-license      = "MIT"
+license      = "Apache-2.0"
 authors      = [ "sxyazi <sxyazi@gmail.com>" ]
-homepage     = "https://github.com/hasnaxyz/open-yasa"
-repository   = "https://github.com/hasnaxyz/open-yasa"
+homepage     = "https://github.com/hasna/yasa"
+repository   = "https://github.com/hasna/yasa"
 rust-version = "1.95.0"
 
 [profile.dev]

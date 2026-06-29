@@ -105,7 +105,7 @@ jobs:
           Copy-Item -Path "target\${{ matrix.target }}\release-windows\ya.exe" -Destination ${env:TARGET_NAME}
           Copy-Item -Path "target\${{ matrix.target }}\release-windows\yazi.exe" -Destination ${env:TARGET_NAME}
           Copy-Item -Path "yazi-boot\completions" -Destination ${env:TARGET_NAME} -Recurse
-          Copy-Item -Path "README.md", "LICENSE" -Destination ${env:TARGET_NAME}
+          Copy-Item -Path "README.md", "LICENSE", "LICENSE-MIT" -Destination ${env:TARGET_NAME}
           Compress-Archive -Path ${env:TARGET_NAME} -DestinationPath "${env:TARGET_NAME}.zip"
 
       - name: Upload artifact
@@ -235,7 +235,7 @@ jobs:
           echo 'NIGHTLY_BODY<<EOF' >> $GITHUB_ENV
           echo "From commit: ${GITHUB_SHA:0:8}" >> $GITHUB_ENV
           echo "Generated on: $(date -u +"%Y-%m-%d %H:%M") UTC" >> $GITHUB_ENV
-          echo "Nightly changelog: https://github.com/hasnaxyz/open-yasa/blob/main/CHANGELOG.md#unreleased" >> $GITHUB_ENV
+          echo "Nightly changelog: https://github.com/hasna/yasa/blob/main/CHANGELOG.md#unreleased" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - uses: actions/checkout@v7
